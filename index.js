@@ -56,6 +56,7 @@ class Logger {
   logs = []
   maxAge = Infinity
   maxEntries = Infinity
+  subscriptions = {}
 
   constructor(options) {
     options = options || {}
@@ -78,6 +79,16 @@ class Logger {
     this.maxEntries = options.maxEntries || this.maxEntries
 
     this.load()
+  }
+
+  emit(channel, payload) {
+    if (this.subscriptions[channel]) {
+      this.subscriptions[channel].forEach(callback => {
+        callback(payload)
+      })
+    }
+
+    return this
   }
 
   load() {
@@ -118,6 +129,27 @@ class Logger {
 
   logWarning(message, payload) {
     return this.log(message, Entry.Type.WARNING, payload)
+  }
+
+  off(channel, callback) {
+    if (this.subscriptions[channel]) {
+      const index = this.subscriptions[channel].indexOf(callback)
+
+      if (index > -1) {
+        this.subscriptions[channel].splice(index, 1)
+      }
+    }
+
+    return this
+  }
+
+  on(channel, callback) {
+    if (!this.subscriptions[channel]) {
+      this.subscriptions[channel] = []
+    }
+
+    this.subscriptions[channel].push(callback)
+    return this
   }
 
   save() {
