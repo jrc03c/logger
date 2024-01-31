@@ -1,3 +1,4 @@
+const { parse, stringify } = require("@jrc03c/js-text-tools")
 const FileDB = require("@jrc03c/filedb")
 const fs = require("node:fs")
 
@@ -20,6 +21,14 @@ class Entry {
     this.message = options.message
     this.payload = options.payload
     this.type = options.type
+
+    const types = Object.keys(Entry.Type).toSorted()
+
+    if (types.indexOf(this.type) < 0) {
+      throw new Error(
+        `New entries into the log must have a type that is one of these: [${types.join(", ")}] !`,
+      )
+    }
   }
 }
 
@@ -58,6 +67,12 @@ class Logger {
 
   load() {
     this.logs = this.db.readSync(this.dbKey)
+
+    if (!(this.logs instanceof Array)) {
+      this.logs = []
+    }
+
+    this.logs = this.logs.map(entry => parse(entry))
     return this
   }
 
@@ -84,7 +99,7 @@ class Logger {
     const now = new Date()
 
     this.logs = this.logs.filter(
-      entry => now - new Date(entry.date) < this.maxAge,
+      entry => now - new Date(entry.date) <= this.maxAge,
     )
 
     // prune to the maximum number of entries
@@ -92,7 +107,11 @@ class Logger {
       this.logs = this.logs.slice(-this.maxEntries)
     }
 
-    this.db.writeSync(this.dbKey, this.logs)
+    this.db.writeSync(
+      this.dbKey,
+      this.logs.map(entry => stringify(entry)),
+    )
+
     return this
   }
 }
