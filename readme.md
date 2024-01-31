@@ -68,7 +68,7 @@ The filesystem directory in which the logger will store its files.
 
 ### `subscriptions`
 
-An object containing key-value pairs that are, respectively, event names and arrays of callback functions. There's probably no need to access this property directly as it is generally controlled by the [`emit`](#emit), [`off`](#off), and [`on`](#on) methods.
+An object containing key-value pairs that are, respectively, event names and arrays of callback functions. There's probably no need to access this property directly as it is generally controlled by the [`emit`](#emitevent-payload), [`off`](#offevent-callback), and [`on`](#onevent-callback) methods.
 
 ## Methods
 
