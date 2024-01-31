@@ -20,7 +20,7 @@ mkdir -p path/to/my-logs
 const Logger = require("@jrc03c/logger")
 
 const logger = new Logger({
-  dir: "path/to/my-logs",
+  path: "path/to/my-logs",
 })
 
 logger.logInfo("Hello, world!")
@@ -41,27 +41,14 @@ The options object passed into the constructor can have these properties and cor
 
 **Required:**
 
-- `dir` = See the [`dir`](#dir) property.
+- `path` = See the [`path`](#path) property.
 
 **Optional:**
 
-- `dbKey` = See the [`dbKey`](#dbKey) property.
 - `maxAge` = See the [`maxAge`](#maxAge) property.
 - `maxEntries` = See the [`maxEntries`](#maxEntries) property.
 
 ## Properties
-
-### `db`
-
-The `FileDB` instance that handles writing to and reading from disk. Check out the documentation for FileDB [here](https://github.com/jrc03c/filedb).
-
-### `dbKey`
-
-The is a string representing the key under which values are written in the database. If you're familiar with [FileDB](https://github.com/jrc03c/filedb), which has a `write(key, value)` method, then you can think of this property as the `key` argument to that method. In practice, and on disk, it becomes a subdirectory of `dir`.
-
-### `dir`
-
-The filesystem directory in which the logger will store its files.
 
 ### `logs`
 
@@ -75,7 +62,32 @@ The maximum age in milliseconds of any log entry. Entries that are older than th
 
 The maximum number of entries to be kept in the log. When the number of entries exceeds `maxEntries`, the most recent `maxEntries` entries are kept and the rest are deleted.
 
+### `path`
+
+The filesystem directory in which the logger will store its files.
+
+### `subscriptions`
+
+An object containing key-value pairs that are, respectively, event names and arrays of callback functions. There's probably no need to access this property directly as it is generally controlled by the [`emit`](#emit), [`off`](#off), and [`on`](#on) methods.
+
 ## Methods
+
+### `emit(event, payload)`
+
+Calls all callbacks that are subscribed for a particular event name (`event`), passing `payload` to them.
+
+Emitted events include:
+
+- `"error"` is fired when an error message is logged.
+- `"info"` is fired when an info message is logged.
+- `"load"` is fired when the logger instance has finished loading log entries from disk.
+- `"save"` is fired when the logger instance has finished writing log entries to disk.
+- `"success"` is fired when a success message is logged.
+- `"warning"` is fired when a warning message is logged.
+
+### `load()`
+
+Loads log entries from disk. You'll almost certainly want to call this method after constructing your `Logger` instance unless you know for sure that you don't have logs on disk that you'll want to import at runtime.
 
 ### `log(message, type, payload)`
 
@@ -104,3 +116,37 @@ Logs a success message.
 ### `logWarning(message, payload)`
 
 Logs a warning message.
+
+### `off(event, callback)`
+
+Unsubscribes a callback function from an event.
+
+### `on(event, callback)`
+
+Subscribes a callback function to an event. For example:
+
+```js
+const Logger = require("@jrc03c/logger")
+const logger = new Logger({ path: "path/to/my/logs" })
+
+logger.on("load", () => {
+  console.log("Loaded!")
+})
+
+logger.on("error", () => {
+  console.log("Oh noes!")
+})
+
+logger.load()
+```
+
+When a logging method is invoked (e.g., `logInfo`, `logError`, etc.), the message and payload passed into that method also get passed along to all callback functions that are subscribed to the corresponding event. For example:
+
+```js
+logger.on("info", data => {
+  console.log(data.message) // "Hello, world!"
+  console.log(data.payload) // [1, 2, 3, 4, 5]
+})
+
+logger.logInfo("Hello, world!", [1, 2, 3, 4, 5])
+```
