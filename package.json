@@ -1,11 +1,21 @@
 {
+  "author": "jrc03c",
+  "dependencies": {
+    "@jrc03c/filedb": "^0.0.18"
+  },
+  "description": "a simple logger for node",
   "devDependencies": {
     "@jrc03c/make-key": "^0.0.14",
     "eslint": "^8.56.0",
     "jest": "^29.7.0",
     "prettier": "^3.2.4"
   },
-  "dependencies": {
-    "@jrc03c/filedb": "^0.0.18"
-  }
+  "keywords": [],
+  "license": "ISC",
+  "main": "index.js",
+  "name": "@jrc03c/logger",
+  "scripts": {
+    "test": "jest"
+  },
+  "version": "0.0.1"
 }
