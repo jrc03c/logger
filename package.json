@@ -1,5 +1,6 @@
 {
   "devDependencies": {
+    "@jrc03c/make-key": "^0.0.14",
     "eslint": "^8.56.0",
     "jest": "^29.7.0",
     "prettier": "^3.2.4"
