@@ -1,0 +1,10 @@
+{
+  "devDependencies": {
+    "eslint": "^8.56.0",
+    "jest": "^29.7.0",
+    "prettier": "^3.2.4"
+  },
+  "dependencies": {
+    "@jrc03c/filedb": "^0.0.18"
+  }
+}
