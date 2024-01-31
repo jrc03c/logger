@@ -10,17 +10,21 @@ npm install --save @jrc03c/logger
 
 # Usage
 
-Pick a directory in which the logger should store its files. If the directory doesn't exist, you'll need to create it before using the logger.
+Pick a target path where the directory will store its log entries. This can be either a file path or a directory path. If a file path is specified, then all log entries will be stored in that single file in JSON format. If a directory path is specified, then each log entry will be stored in its own file (in JSON format) within the directory. If the target path doesn't exist, you'll need to create it before using the logger.
+
+For example, if I wanted to keep my log entries in a directory, I'd create the directory first:
 
 ```bash
-mkdir -p path/to/my-logs
+mkdir -p path/to/my/logs
 ```
+
+And then use the logger:
 
 ```js
 const Logger = require("@jrc03c/logger")
 
 const logger = new Logger({
-  path: "path/to/my-logs",
+  path: "path/to/my/logs",
 })
 
 logger.logInfo("Hello, world!")
@@ -64,7 +68,7 @@ The maximum number of entries to be kept in the log. When the number of entries 
 
 ### `path`
 
-The filesystem directory in which the logger will store its files.
+A string representing either a file path or a directory path. If the path points to a file, then all log entries will be stored in that file in JSON format. If the path points to a directory, then each log entry will be stored in its own file (in JSON format) within the directory. If the path doesn't exist, it'll need to be created before the logger can be used.
 
 ### `subscriptions`
 
