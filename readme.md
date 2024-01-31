@@ -91,10 +91,10 @@ Loads log entries from disk. You'll almost certainly want to call this method af
 
 ### `log(message, type, payload)`
 
-This is the generic form of all of the subsequent methods. The only difference between this and the others is that this one requires that you specify an entry `type`. Options are: `"ERROR"`, `"INFO"`, `"SUCCESS"`, or `"WARNING"`. Those options can also be found under `Logger.Entry.Type`. For example:
+This is the generic form of all of the subsequent methods. The only difference between this and the others is that this one requires that you specify an entry `type`. I tend to prefer uppercase strings for the types, like `"INFO"`, but you're welcome to use whatever you like.
 
 ```js
-logger.log("Hello, world!", Logger.Entry.Type.INFO, { some: "info" })
+logger.log("Hello, world!", "INFO", { some: "info" })
 ```
 
 Because this method requires a more verbose call, there's really no reason to prefer it over the methods below. In fact, all of the methods below really just call this method!
