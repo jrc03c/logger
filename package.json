@@ -1,7 +1,6 @@
 {
   "author": "jrc03c",
   "dependencies": {
-    "@jrc03c/filedb": "^0.0.18",
     "@jrc03c/js-text-tools": "^0.0.24"
   },
   "description": "a simple logger for node",

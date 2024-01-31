@@ -1,84 +1,27 @@
 const { parse, stringify } = require("@jrc03c/js-text-tools")
-const FileDB = require("@jrc03c/filedb")
 const fs = require("node:fs")
-
-class Entry {
-  static Type = {
-    INFO: "INFO",
-    SUCCESS: "SUCCESS",
-    WARNING: "WARNING",
-    ERROR: "ERROR",
-  }
-
-  date = null
-  message = null
-  payload = null
-  type = null
-
-  constructor(options) {
-    options = options || {}
-    this.date = new Date().toJSON()
-    this.message = options.message
-    this.payload = options.payload
-    this.type = options.type
-
-    const types = Object.keys(Entry.Type).toSorted()
-
-    if (types.indexOf(this.type) < 0) {
-      throw new Error(
-        `New entries into the log must have a type that is one of these: [${types.join(", ")}] !`,
-      )
-    }
-  }
-
-  toObject() {
-    return {
-      date: this.date,
-      message:
-        typeof this.message === "string"
-          ? this.message
-          : stringify(this.message),
-      payload:
-        typeof this.payload === "string"
-          ? this.payload
-          : stringify(this.payload),
-      type: this.type,
-    }
-  }
-}
+const path = require("node:path")
 
 class Logger {
-  static Entry = Entry
-
-  db = null
-  dbKey = "/logs"
-  dir = null
   logs = []
   maxAge = Infinity
   maxEntries = Infinity
+  path = null
   subscriptions = {}
 
   constructor(options) {
     options = options || {}
 
-    this.dir = options.dir
+    this.path = options.path
 
-    if (!this.dir || typeof this.dir !== "string") {
+    if (!this.path || typeof this.path !== "string") {
       throw new Error(
-        `A "dir" property must be defined on the options object passed into the \`Logger\` constructor! It must be given a string value representing a filesystem path where the logger will store its files.`,
+        `A "path" property must be defined on the options object passed into the \`Logger\` constructor! It must be given a string value representing a filesystem path where the logger will store its files. If the path points to a single file, then the logger will write all entries into that file. If the path points to a directory, then the logger will create a file for each entry within that directory.`,
       )
     }
 
-    if (!fs.existsSync(this.dir)) {
-      throw new Error(`The directory "${this.dir}" does not exist!`)
-    }
-
-    this.db = new FileDB(this.dir)
-    this.dbKey = options.dbKey || this.dbKey
     this.maxAge = options.maxAge || this.maxAge
     this.maxEntries = options.maxEntries || this.maxEntries
-
-    this.load()
   }
 
   emit(channel, payload) {
@@ -92,43 +35,61 @@ class Logger {
   }
 
   load() {
-    let cached = this.db.readSync(this.dbKey)
-
-    if (!(cached instanceof Array)) {
-      cached = []
+    // read from disk
+    if (!fs.existsSync(this.path)) {
+      throw new Error(`The path "${this.path}" does not exist!`)
     }
 
-    this.logs = cached.map(entry => {
-      const temp = new Entry(entry)
-      temp.date = entry.date
-      temp.message = parse(entry.message)
-      temp.payload = parse(entry.payload)
-      return temp
-    })
+    const stat = fs.statSync(this.path)
 
+    if (stat.isFile()) {
+      try {
+        const raw = fs.readFileSync(this.path, "utf8")
+        this.logs = parse(raw)
+      } catch (e) {
+        this.logs = []
+      }
+    } else {
+      const files = fs.readdirSync(this.path)
+
+      try {
+        this.logs = files.map(f =>
+          parse(fs.readFileSync(path.join(this.path, f), "utf8")),
+        )
+      } catch (e) {
+        this.logs = []
+      }
+    }
+
+    this.emit("load")
     return this
   }
 
   log(message, type, payload) {
-    this.logs.push(new Entry({ message, payload, type }))
+    const date = new Date()
+    this.logs.push({ date, message, payload, type })
     this.save()
     return this
   }
 
   logError(message, payload) {
-    return this.log(message, Entry.Type.ERROR, payload)
+    this.emit("error", { message, payload })
+    return this.log(message, "ERROR", payload)
   }
 
   logInfo(message, payload) {
-    return this.log(message, Entry.Type.INFO, payload)
+    this.emit("info", { message, payload })
+    return this.log(message, "INFO", payload)
   }
 
   logSuccess(message, payload) {
-    return this.log(message, Entry.Type.SUCCESS, payload)
+    this.emit("success", { message, payload })
+    return this.log(message, "SUCCESS", payload)
   }
 
   logWarning(message, payload) {
-    return this.log(message, Entry.Type.WARNING, payload)
+    this.emit("warning", { message, payload })
+    return this.log(message, "WARNING", payload)
   }
 
   off(channel, callback) {
@@ -156,20 +117,46 @@ class Logger {
     // prune old entries
     const now = new Date()
 
-    this.logs = this.logs.filter(
-      entry => now - new Date(entry.date) <= this.maxAge,
-    )
+    this.logs = this.logs.filter(entry => now - this.maxAge < entry.date)
 
     // prune to the maximum number of entries
     if (this.logs.length > this.maxEntries) {
       this.logs = this.logs.slice(-this.maxEntries)
     }
 
-    this.db.writeSync(
-      this.dbKey,
-      this.logs.map(entry => entry.toObject()),
-    )
+    // write to disk
+    if (!fs.existsSync(this.path)) {
+      throw new Error(`The path "${this.path}" does not exist!`)
+    }
 
+    const stat = fs.statSync(this.path)
+
+    if (stat.isFile()) {
+      fs.writeFileSync(this.path, stringify(this.logs, "  "), "utf8")
+    } else {
+      this.logs.forEach(entry => {
+        const { date } = entry
+        const year = date.getFullYear()
+        const month = date.getMonth().toString().padStart(2, "0")
+        const day = date.getDate().toString().padStart(2, "0")
+        const hours = date.getHours().toString().padStart(2, "0")
+        const minutes = date.getMinutes().toString().padStart(2, "0")
+        const seconds = date.getSeconds().toString().padStart(2, "0")
+        const millis = date.getMilliseconds().toString().padStart(2, "0")
+
+        const name = [year, month, day, hours, minutes, seconds, millis].join(
+          "-",
+        )
+
+        fs.writeFileSync(
+          path.join(this.path, name),
+          stringify(entry, "  "),
+          "utf8",
+        )
+      })
+    }
+
+    this.emit("save")
     return this
   }
 }

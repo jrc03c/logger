@@ -4,35 +4,30 @@ const Logger = require(".")
 const makeKey = require("@jrc03c/make-key")
 const pause = require("@jrc03c/pause")
 
-let root
+const dirs = []
 
 afterAll(() => {
-  fs.rmSync(root, { force: true, recursive: true })
+  dirs.forEach(dir => {
+    fs.rmSync(dir, { force: true, recursive: true })
+  })
 })
 
 test("tests that the `Logger` class works as expected", async () => {
-  let logger
-  root = makeKey(8)
-
-  expect(() => new Logger()).toThrow()
-  expect(() => new Logger({ dir: root })).toThrow()
-
+  const root = makeKey(8)
+  dirs.push(root)
   fs.mkdirSync(root)
 
-  logger = new Logger({
-    dbKey: "/logs",
-    dir: root,
-    maxAge: Infinity,
-    maxEntries: Infinity,
+  let logger = new Logger({
+    path: root,
   })
 
   expect(logger.logs.length).toBe(0)
 
   // generic
-  logger.log("Hello, world!", Logger.Entry.Type.INFO)
+  logger.log("Hello, world!", "INFO")
   expect(logger.logs.length).toBe(1)
   expect(logger.logs[0].message).toBe("Hello, world!")
-  expect(logger.logs[0].type).toBe(Logger.Entry.Type.INFO)
+  expect(logger.logs[0].type).toBe("INFO")
   expect(isUndefined(logger.logs[0].payload)).toBe(true)
   await pause(100)
 
@@ -40,13 +35,9 @@ test("tests that the `Logger` class works as expected", async () => {
   logger.logInfo("Goodbye, world!", { x: 3, y: 5, z: 7 })
   expect(logger.logs.length).toBe(2)
   expect(logger.logs[1].message).toBe("Goodbye, world!")
-  expect(logger.logs[1].type).toBe(Logger.Entry.Type.INFO)
+  expect(logger.logs[1].type).toBe("INFO")
   expect(isEqual(logger.logs[1].payload, { x: 3, y: 5, z: 7 })).toBe(true)
-
-  expect(new Date(logger.logs[0].date) < new Date(logger.logs[1].date)).toBe(
-    true,
-  )
-
+  expect(logger.logs[0].date < logger.logs[1].date).toBe(true)
   await pause(100)
 
   // warning
@@ -57,45 +48,39 @@ test("tests that the `Logger` class works as expected", async () => {
     true,
   )
 
-  expect(logger.logs[2].type).toBe(Logger.Entry.Type.WARNING)
+  expect(logger.logs[2].type).toBe("WARNING")
   expect(isUndefined(logger.logs[2].payload)).toBe(true)
-
-  expect(new Date(logger.logs[1].date) < new Date(logger.logs[2].date)).toBe(
-    true,
-  )
-
+  expect(logger.logs[1].date < logger.logs[2].date).toBe(true)
   await pause(100)
 
   // error
   logger.logError()
   expect(logger.logs.length).toBe(4)
   expect(isUndefined(logger.logs[3].message)).toBe(true)
-  expect(logger.logs[3].type).toBe(Logger.Entry.Type.ERROR)
+  expect(logger.logs[3].type).toBe("ERROR")
   expect(isUndefined(logger.logs[3].payload)).toBe(true)
-
-  expect(new Date(logger.logs[2].date) < new Date(logger.logs[3].date)).toBe(
-    true,
-  )
+  expect(logger.logs[2].date < logger.logs[3].date).toBe(true)
+  await pause(100)
 
   // success
   logger.logSuccess("Yippee!", "Hooray!")
   expect(logger.logs.length).toBe(5)
   expect(logger.logs[4].message).toBe("Yippee!")
-  expect(logger.logs[4].type).toBe(Logger.Entry.Type.SUCCESS)
+  expect(logger.logs[4].type).toBe("SUCCESS")
   expect(logger.logs[4].payload).toBe("Hooray!")
-
-  expect(new Date(logger.logs[3].date) < new Date(logger.logs[4].date)).toBe(
-    true,
-  )
+  expect(logger.logs[3].date < logger.logs[4].date).toBe(true)
+  await pause(100)
 
   const origLogs = copy(logger.logs)
 
   // max age
   const maxAge = 100
+  const dir2 = makeKey(8)
+  dirs.push(dir2)
+  fs.mkdirSync(dir2)
 
   logger = new Logger({
-    dbKey: "/" + makeKey(8),
-    dir: root,
+    path: dir2,
     maxAge,
     maxEntries: Infinity,
   })
@@ -106,26 +91,21 @@ test("tests that the `Logger` class works as expected", async () => {
 
   await pause(250)
 
-  for (let i = 0; i < 5; i++) {
+  for (let i = 0; i < 25; i++) {
     logger.logError(makeKey(8))
   }
 
-  const now = new Date()
-
-  expect(logger.logs.length).toBe(
-    logger.logs.filter(entry => now - new Date(entry.date) <= maxAge).length,
-  )
-
-  expect(
-    logger.logs.every(entry => entry.type === Logger.Entry.Type.ERROR),
-  ).toBe(true)
+  expect(logger.logs.length).toBe(25)
+  expect(logger.logs.every(entry => entry.type === "ERROR")).toBe(true)
 
   // max entries
   const maxEntries = 25
+  const dir3 = makeKey(8)
+  dirs.push(dir3)
+  fs.mkdirSync(dir3)
 
   logger = new Logger({
-    dbKey: "/" + makeKey(8),
-    dir: root,
+    path: dir3,
     maxAge: Infinity,
     maxEntries,
   })
@@ -137,10 +117,10 @@ test("tests that the `Logger` class works as expected", async () => {
 
   // loading
   logger = new Logger({
-    dbKey: "/logs",
-    dir: root,
+    path: root,
   })
 
+  logger.load()
   expect(logger.logs.length).toBe(origLogs.length)
 
   for (let i = 0; i < logger.logs.length; i++) {
