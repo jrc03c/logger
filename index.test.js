@@ -1,4 +1,4 @@
-const { isEqual, isUndefined, normal } = require("@jrc03c/js-math-tools")
+const { copy, isEqual, isUndefined, normal } = require("@jrc03c/js-math-tools")
 const fs = require("node:fs")
 const Logger = require(".")
 const makeKey = require("@jrc03c/make-key")
@@ -37,7 +37,7 @@ test("tests that the `Logger` class works as expected", async () => {
   await pause(100)
 
   // info
-  logger.info("Goodbye, world!", { x: 3, y: 5, z: 7 })
+  logger.logInfo("Goodbye, world!", { x: 3, y: 5, z: 7 })
   expect(logger.logs.length).toBe(2)
   expect(logger.logs[1].message).toBe("Goodbye, world!")
   expect(logger.logs[1].type).toBe(Logger.Entry.Type.INFO)
@@ -50,7 +50,7 @@ test("tests that the `Logger` class works as expected", async () => {
   await pause(100)
 
   // warning
-  logger.warn({ "this is not": "a string" })
+  logger.logWarning({ "this is not": "a string" })
   expect(logger.logs.length).toBe(3)
 
   expect(isEqual(logger.logs[2].message, { "this is not": "a string" })).toBe(
@@ -67,7 +67,7 @@ test("tests that the `Logger` class works as expected", async () => {
   await pause(100)
 
   // error
-  logger.error()
+  logger.logError()
   expect(logger.logs.length).toBe(4)
   expect(isUndefined(logger.logs[3].message)).toBe(true)
   expect(logger.logs[3].type).toBe(Logger.Entry.Type.ERROR)
@@ -76,6 +76,19 @@ test("tests that the `Logger` class works as expected", async () => {
   expect(new Date(logger.logs[2].date) < new Date(logger.logs[3].date)).toBe(
     true,
   )
+
+  // success
+  logger.logSuccess("Yippee!", "Hooray!")
+  expect(logger.logs.length).toBe(5)
+  expect(logger.logs[4].message).toBe("Yippee!")
+  expect(logger.logs[4].type).toBe(Logger.Entry.Type.SUCCESS)
+  expect(logger.logs[4].payload).toBe("Hooray!")
+
+  expect(new Date(logger.logs[3].date) < new Date(logger.logs[4].date)).toBe(
+    true,
+  )
+
+  const origLogs = copy(logger.logs)
 
   // max age
   const maxAge = 100
@@ -88,13 +101,13 @@ test("tests that the `Logger` class works as expected", async () => {
   })
 
   for (let i = 0; i < 100; i++) {
-    logger.warn(makeKey(8), normal(10))
+    logger.logWarning(makeKey(8), normal(10))
   }
 
   await pause(250)
 
-  for (let i = 0; i < 25; i++) {
-    logger.error(makeKey(8), normal(10))
+  for (let i = 0; i < 5; i++) {
+    logger.logError(makeKey(8))
   }
 
   const now = new Date()
@@ -108,7 +121,7 @@ test("tests that the `Logger` class works as expected", async () => {
   ).toBe(true)
 
   // max entries
-  const maxEntries = 100
+  const maxEntries = 25
 
   logger = new Logger({
     dbKey: "/" + makeKey(8),
@@ -117,8 +130,27 @@ test("tests that the `Logger` class works as expected", async () => {
     maxEntries,
   })
 
-  for (let i = 0; i < 1000; i++) {
-    logger.info(makeKey(8))
+  for (let i = 0; i < 100; i++) {
+    logger.logInfo(makeKey(8))
     expect(logger.logs.length).toBeLessThanOrEqual(maxEntries)
+  }
+
+  // loading
+  logger = new Logger({
+    dbKey: "/logs",
+    dir: root,
+  })
+
+  expect(logger.logs.length).toBe(origLogs.length)
+
+  for (let i = 0; i < logger.logs.length; i++) {
+    const e1 = logger.logs[i]
+    const e2 = origLogs[i]
+
+    expect(isEqual(Object.keys(e1).toSorted(), Object.keys(e2).toSorted()))
+
+    Object.keys(e1).forEach(key => {
+      expect(isEqual(e1[key], e2[key])).toBe(true)
+    })
   }
 })

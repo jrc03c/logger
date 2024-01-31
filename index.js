@@ -30,6 +30,21 @@ class Entry {
       )
     }
   }
+
+  toObject() {
+    return {
+      date: this.date,
+      message:
+        typeof this.message === "string"
+          ? this.message
+          : stringify(this.message),
+      payload:
+        typeof this.payload === "string"
+          ? this.payload
+          : stringify(this.payload),
+      type: this.type,
+    }
+  }
 }
 
 class Logger {
@@ -66,13 +81,20 @@ class Logger {
   }
 
   load() {
-    this.logs = this.db.readSync(this.dbKey)
+    let cached = this.db.readSync(this.dbKey)
 
-    if (!(this.logs instanceof Array)) {
-      this.logs = []
+    if (!(cached instanceof Array)) {
+      cached = []
     }
 
-    this.logs = this.logs.map(entry => parse(entry))
+    this.logs = cached.map(entry => {
+      const temp = new Entry(entry)
+      temp.date = entry.date
+      temp.message = parse(entry.message)
+      temp.payload = parse(entry.payload)
+      return temp
+    })
+
     return this
   }
 
@@ -82,15 +104,19 @@ class Logger {
     return this
   }
 
-  error(message, payload) {
+  logError(message, payload) {
     return this.log(message, Entry.Type.ERROR, payload)
   }
 
-  info(message, payload) {
+  logInfo(message, payload) {
     return this.log(message, Entry.Type.INFO, payload)
   }
 
-  warn(message, payload) {
+  logSuccess(message, payload) {
+    return this.log(message, Entry.Type.SUCCESS, payload)
+  }
+
+  logWarning(message, payload) {
     return this.log(message, Entry.Type.WARNING, payload)
   }
 
@@ -109,7 +135,7 @@ class Logger {
 
     this.db.writeSync(
       this.dbKey,
-      this.logs.map(entry => stringify(entry)),
+      this.logs.map(entry => entry.toObject()),
     )
 
     return this
