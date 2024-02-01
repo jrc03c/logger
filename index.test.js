@@ -5,10 +5,19 @@ const makeKey = require("@jrc03c/make-key")
 const pause = require("@jrc03c/pause")
 
 const dirs = []
+const files = []
 
 afterAll(() => {
   dirs.forEach(dir => {
     fs.rmSync(dir, { force: true, recursive: true })
+  })
+
+  files.forEach(file => {
+    try {
+      fs.unlinkSync(file)
+    } catch (e) {
+      // ...
+    }
   })
 })
 
@@ -133,4 +142,41 @@ test("tests that the `Logger` class works as expected", async () => {
       expect(isEqual(e1[key], e2[key])).toBe(true)
     })
   }
+
+  // files vs. directories
+  const fileLogger = new Logger({ path: makeKey(8) })
+  fs.writeFileSync(fileLogger.path, "", "utf8")
+  files.push(fileLogger.path)
+
+  const dirLogger = new Logger({ path: makeKey(8) })
+  fs.mkdirSync(dirLogger.path, { recursive: true })
+  dirs.push(dirLogger.path)
+
+  for (let i = 0; i < 1000; i++) {
+    fileLogger.logs.push({
+      id: makeKey(8),
+      date: new Date(),
+      message: makeKey(8),
+      type: "success",
+      payload: undefined,
+    })
+  }
+
+  dirLogger.logs = copy(fileLogger.logs)
+
+  fileLogger.save()
+  dirLogger.save()
+
+  const fileLogger2 = new Logger({ path: fileLogger.path })
+  fileLogger2.load()
+
+  const dirLogger2 = new Logger({ path: dirLogger.path })
+  dirLogger2.load()
+
+  expect(fileLogger2.logs.length).toBe(dirLogger2.logs.length)
+
+  fileLogger2.logs.forEach(e1 => {
+    const e2 = dirLogger2.logs.find(entry => entry.id === e1.id)
+    expect(isEqual(e1, e2)).toBe(true)
+  })
 })

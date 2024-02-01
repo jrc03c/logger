@@ -1,5 +1,5 @@
-const { parse, stringify } = require("@jrc03c/js-text-tools")
 const fs = require("node:fs")
+const makeKey = require("@jrc03c/make-key")
 const path = require("node:path")
 
 class Logger {
@@ -45,7 +45,7 @@ class Logger {
     if (stat.isFile()) {
       try {
         const raw = fs.readFileSync(this.path, "utf8")
-        this.logs = parse(raw)
+        this.logs = JSON.parse(raw)
       } catch (e) {
         this.logs = []
       }
@@ -54,20 +54,29 @@ class Logger {
 
       try {
         this.logs = files.map(f =>
-          parse(fs.readFileSync(path.join(this.path, f), "utf8")),
+          JSON.parse(fs.readFileSync(path.join(this.path, f), "utf8")),
         )
       } catch (e) {
         this.logs = []
       }
     }
 
+    this.logs.forEach(entry => {
+      Object.keys(entry).forEach(key => {
+        if (typeof entry[key] === "undefined") {
+          delete entry[key]
+        }
+      })
+    })
+
     this.emit("load")
     return this
   }
 
   log(message, type, payload) {
-    const date = new Date()
-    this.logs.push({ date, message, payload, type })
+    const date = new Date().toJSON()
+    const id = makeKey(8)
+    this.logs.push({ date, id, message, payload, type })
     this.save()
     return this
   }
@@ -114,10 +123,21 @@ class Logger {
   }
 
   save() {
+    // tree-shake unused properties
+    this.logs.forEach(entry => {
+      Object.keys(entry).forEach(key => {
+        if (typeof entry[key] === "undefined") {
+          delete entry[key]
+        }
+      })
+    })
+
     // prune old entries
     const now = new Date()
 
-    this.logs = this.logs.filter(entry => now - this.maxAge < entry.date)
+    this.logs = this.logs.filter(
+      entry => now - this.maxAge < new Date(entry.date),
+    )
 
     // prune to the maximum number of entries
     if (this.logs.length > this.maxEntries) {
@@ -132,25 +152,32 @@ class Logger {
     const stat = fs.statSync(this.path)
 
     if (stat.isFile()) {
-      fs.writeFileSync(this.path, stringify(this.logs, "  "), "utf8")
+      fs.writeFileSync(this.path, JSON.stringify(this.logs, null, 2), "utf8")
     } else {
       this.logs.forEach(entry => {
-        const { date } = entry
+        const date = new Date(entry.date)
         const year = date.getFullYear()
         const month = date.getMonth().toString().padStart(2, "0")
         const day = date.getDate().toString().padStart(2, "0")
         const hours = date.getHours().toString().padStart(2, "0")
         const minutes = date.getMinutes().toString().padStart(2, "0")
         const seconds = date.getSeconds().toString().padStart(2, "0")
-        const millis = date.getMilliseconds().toString().padStart(2, "0")
+        const millis = date.getMilliseconds().toString().padStart(4, "0")
 
-        const name = [year, month, day, hours, minutes, seconds, millis].join(
-          "-",
-        )
+        const name = [
+          year,
+          month,
+          day,
+          hours,
+          minutes,
+          seconds,
+          millis,
+          entry.id,
+        ].join("-")
 
         fs.writeFileSync(
           path.join(this.path, name),
-          stringify(entry, "  "),
+          JSON.stringify(entry, null, 2),
           "utf8",
         )
       })
