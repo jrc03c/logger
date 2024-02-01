@@ -16,7 +16,7 @@ function writeToStdout(message, type, payload, filename) {
   console.log("-----")
 
   console.log(
-    `${fx.bright(color(type.toUpperCase()))} ${fx.dim(color("[" + new Date().toUTCString() + "]"))}: ${message}` +
+    `${fx.bright(color(type.toUpperCase()))} ${color("[" + new Date().toUTCString() + "]")}: ${message}` +
       (payload ? ` See "${filename}" to inspect this message's payload.` : ""),
   )
 }
