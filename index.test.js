@@ -28,6 +28,7 @@ test("tests that the `Logger` class works as expected", async () => {
 
   let logger = new Logger({
     path: root,
+    shouldWriteToStdout: false,
   })
 
   expect(logger.logs.length).toBe(0)
@@ -92,6 +93,7 @@ test("tests that the `Logger` class works as expected", async () => {
     path: dir2,
     maxAge,
     maxEntries: Infinity,
+    shouldWriteToStdout: false,
   })
 
   for (let i = 0; i < 100; i++) {
@@ -117,6 +119,7 @@ test("tests that the `Logger` class works as expected", async () => {
     path: dir3,
     maxAge: Infinity,
     maxEntries,
+    shouldWriteToStdout: false,
   })
 
   for (let i = 0; i < 100; i++) {
@@ -127,6 +130,7 @@ test("tests that the `Logger` class works as expected", async () => {
   // loading
   logger = new Logger({
     path: root,
+    shouldWriteToStdout: false,
   })
 
   logger.load()
@@ -144,11 +148,16 @@ test("tests that the `Logger` class works as expected", async () => {
   }
 
   // files vs. directories
-  const fileLogger = new Logger({ path: makeKey(8) })
+  const fileLogger = new Logger({
+    path: makeKey(8),
+    shouldWriteToStdout: false,
+  })
+
   fs.writeFileSync(fileLogger.path, "", "utf8")
   files.push(fileLogger.path)
 
-  const dirLogger = new Logger({ path: makeKey(8) })
+  const dirLogger = new Logger({ path: makeKey(8), shouldWriteToStdout: false })
+
   fs.mkdirSync(dirLogger.path, { recursive: true })
   dirs.push(dirLogger.path)
 
@@ -167,10 +176,18 @@ test("tests that the `Logger` class works as expected", async () => {
   fileLogger.save()
   dirLogger.save()
 
-  const fileLogger2 = new Logger({ path: fileLogger.path })
+  const fileLogger2 = new Logger({
+    path: fileLogger.path,
+    shouldWriteToStdout: false,
+  })
+
   fileLogger2.load()
 
-  const dirLogger2 = new Logger({ path: dirLogger.path })
+  const dirLogger2 = new Logger({
+    path: dirLogger.path,
+    shouldWriteToStdout: false,
+  })
+
   dirLogger2.load()
 
   expect(fileLogger2.logs.length).toBe(dirLogger2.logs.length)

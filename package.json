@@ -1,6 +1,7 @@
 {
   "author": "jrc03c",
   "dependencies": {
+    "@jrc03c/bash-colors": "^0.0.3",
     "@jrc03c/js-text-tools": "^0.0.24",
     "@jrc03c/make-key": "^0.0.14"
   },

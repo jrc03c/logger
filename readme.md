@@ -51,6 +51,7 @@ The options object passed into the constructor can have these properties and cor
 
 - `maxAge` = See the [`maxAge`](#maxAge) property.
 - `maxEntries` = See the [`maxEntries`](#maxEntries) property.
+- `shouldWriteToStdout` = See the [`shouldWriteToStdout`](#shouldWriteToStdout) property.
 
 ## Properties
 
@@ -69,6 +70,10 @@ The maximum number of entries to be kept in the log. When the number of entries 
 ### `path`
 
 A string representing either a file path or a directory path. If the path points to a file, then all log entries will be stored in that file in JSON format. If the path points to a directory, then each log entry will be stored in its own file (in JSON format) within the directory. If the path doesn't exist, it'll need to be created before the logger can be used.
+
+### `shouldWriteToStdout`
+
+A boolean indicating whether or not the logger should print its messages to stdout. True by default.
 
 ### `subscriptions`
 

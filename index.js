@@ -1,12 +1,35 @@
+const { fg, fx } = require("@jrc03c/bash-colors")
 const fs = require("node:fs")
 const makeKey = require("@jrc03c/make-key")
 const path = require("node:path")
+
+const COLORS = {
+  ERROR: fg.red,
+  INFO: fg.blue,
+  OTHER: fx.bright,
+  SUCCESS: fg.green,
+  WARNING: fg.yellow,
+}
+
+function writeToStdout(message, type, payload) {
+  const color = COLORS[type] || COLORS["OTHER"]
+  console.log("-----")
+
+  console.log(
+    `${color(type.toUpperCase())} (${new Date().toJSON()}): ${message}`,
+  )
+
+  if (payload) {
+    console.log(payload)
+  }
+}
 
 class Logger {
   logs = []
   maxAge = Infinity
   maxEntries = Infinity
   path = null
+  shouldWriteToStdout = true
   subscriptions = {}
 
   constructor(options) {
@@ -22,6 +45,11 @@ class Logger {
 
     this.maxAge = options.maxAge || this.maxAge
     this.maxEntries = options.maxEntries || this.maxEntries
+
+    this.shouldWriteToStdout =
+      typeof options.shouldWriteToStdout === "undefined"
+        ? this.shouldWriteToStdout
+        : options.shouldWriteToStdout
   }
 
   emit(channel, payload) {
@@ -77,6 +105,11 @@ class Logger {
     const date = new Date().toJSON()
     const id = makeKey(8)
     this.logs.push({ date, id, message, payload, type })
+
+    if (this.shouldWriteToStdout) {
+      writeToStdout(message, type, payload)
+    }
+
     this.save()
     return this
   }
