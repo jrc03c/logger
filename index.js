@@ -11,17 +11,14 @@ const COLORS = {
   WARNING: fg.yellow,
 }
 
-function writeToStdout(message, type, payload) {
+function writeToStdout(message, type, payload, filename) {
   const color = COLORS[type] || COLORS["OTHER"]
   console.log("-----")
 
   console.log(
-    `${color(type.toUpperCase())} (${new Date().toJSON()}): ${message}`,
+    `${fx.bright(color(type.toUpperCase()))} ${fx.dim(color("[" + new Date().toUTCString() + "]"))}: ${message}` +
+      (payload ? ` See "${filename}" to inspect this message's payload.` : ""),
   )
-
-  if (payload) {
-    console.log(payload)
-  }
 }
 
 class Logger {
@@ -60,6 +57,34 @@ class Logger {
     }
 
     return this
+  }
+
+  getEntryFSPath(entry) {
+    if (fs.statSync(this.path).isFile()) {
+      return this.path
+    } else {
+      const date = new Date(entry.date)
+      const year = date.getFullYear()
+      const month = date.getMonth().toString().padStart(2, "0")
+      const day = date.getDate().toString().padStart(2, "0")
+      const hours = date.getHours().toString().padStart(2, "0")
+      const minutes = date.getMinutes().toString().padStart(2, "0")
+      const seconds = date.getSeconds().toString().padStart(2, "0")
+      const millis = date.getMilliseconds().toString().padStart(4, "0")
+
+      const filename = [
+        year,
+        month,
+        day,
+        hours,
+        minutes,
+        seconds,
+        millis,
+        entry.id,
+      ].join("-")
+
+      return path.join(this.path, filename)
+    }
   }
 
   load() {
@@ -104,10 +129,12 @@ class Logger {
   log(message, type, payload) {
     const date = new Date().toJSON()
     const id = makeKey(8)
-    this.logs.push({ date, id, message, payload, type })
+    const entry = { date, id, message, payload, type }
+    this.logs.push(entry)
 
     if (this.shouldWriteToStdout) {
-      writeToStdout(message, type, payload)
+      const file = this.getEntryFSPath(entry)
+      writeToStdout(message, type, payload, file)
     }
 
     this.save()
@@ -188,31 +215,8 @@ class Logger {
       fs.writeFileSync(this.path, JSON.stringify(this.logs, null, 2), "utf8")
     } else {
       this.logs.forEach(entry => {
-        const date = new Date(entry.date)
-        const year = date.getFullYear()
-        const month = date.getMonth().toString().padStart(2, "0")
-        const day = date.getDate().toString().padStart(2, "0")
-        const hours = date.getHours().toString().padStart(2, "0")
-        const minutes = date.getMinutes().toString().padStart(2, "0")
-        const seconds = date.getSeconds().toString().padStart(2, "0")
-        const millis = date.getMilliseconds().toString().padStart(4, "0")
-
-        const name = [
-          year,
-          month,
-          day,
-          hours,
-          minutes,
-          seconds,
-          millis,
-          entry.id,
-        ].join("-")
-
-        fs.writeFileSync(
-          path.join(this.path, name),
-          JSON.stringify(entry, null, 2),
-          "utf8",
-        )
+        const file = this.getEntryFSPath(entry)
+        fs.writeFileSync(file, JSON.stringify(entry, null, 2), "utf8")
       })
     }
 
