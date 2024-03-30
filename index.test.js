@@ -9,7 +9,11 @@ const files = []
 
 afterAll(() => {
   dirs.forEach(dir => {
-    fs.rmSync(dir, { force: true, recursive: true })
+    try {
+      fs.rmSync(dir, { force: true, recursive: true })
+    } catch (e) {
+      // ...
+    }
   })
 
   files.forEach(file => {
@@ -207,6 +211,12 @@ test("tests that the `Logger` class works as expected", async () => {
     shouldWriteToStdout: false,
   })
 
-  logger.logInfo("Hello, world!")
+  logger.load()
+
+  for (let i = 0; i < 10; i++) {
+    logger.logInfo(makeKey(8))
+  }
+
   expect(fs.existsSync(nope)).toBe(false)
+  expect(logger.logs.length).toBe(10)
 })

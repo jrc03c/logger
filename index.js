@@ -95,7 +95,7 @@ class Logger {
         return path.join(this.path, filename)
       }
     } else {
-      return "(none)"
+      return "[n/a]"
     }
   }
 
