@@ -196,4 +196,17 @@ test("tests that the `Logger` class works as expected", async () => {
     const e2 = dirLogger2.logs.find(entry => entry.id === e1.id)
     expect(isEqual(e1, e2)).toBe(true)
   })
+
+  // not writing to disk
+  const nope = makeKey(8)
+  dirs.push(nope)
+
+  logger = new Logger({
+    path: nope,
+    shouldWriteToDisk: false,
+    shouldWriteToStdout: false,
+  })
+
+  logger.logInfo("Hello, world!")
+  expect(fs.existsSync(nope)).toBe(false)
 })
